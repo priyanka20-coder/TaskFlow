@@ -90,27 +90,36 @@ export const getMe = (req, res) => {
 };
 
 export const updateProfile = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user.id);
+  const user = await User.findById(req.user.id).select("+password");
 
-    if (!user) {
-        res.status(404);
-        throw new Error("User not found");
-    }
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
 
-    user.name = req.body.name || user.name;
-    user.email = req.body.email || user.email;
+  // Update name
+  if (req.body.name) {
+    user.name = req.body.name;
+  }
 
-    // Password update
-    if (req.body.password) {
-        user.password = await bcrypt.hash(req.body.password, 10);
-    }
+  // Update email
+  if (req.body.email) {
+    user.email = req.body.email;
+  }
 
-    await user.save();
+  // Update password
+  // IMPORTANT: Do NOT bcrypt.hash() here.
+  // User.model.js pre("save") will hash it automatically.
+  if (req.body.password && req.body.password.trim() !== "") {
+    user.password = req.body.password;
+  }
 
-    res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        token: generateToken(user._id),
-    });
+  await user.save();
+
+  res.status(200).json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    token: generateToken(user._id),
+  });
 });
